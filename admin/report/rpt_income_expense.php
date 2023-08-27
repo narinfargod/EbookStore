@@ -6,7 +6,7 @@ $pos = $_SESSION['POS'];
 if (!isset($_SESSION["ID"])) {
     header("location:../login.php");
 }
-$row = mysqli_fetch_array(selectWhere('count(*) as permis', 'pos_per', "pp_posid='$pos' "));
+$row = mysqli_fetch_array(selectWhere('count(*) as permis', 'pos_per', "pp_posid='$pos' and pp_perid='PER-005'"));
 $permis = $row['permis'];
 
 ?>
@@ -25,8 +25,7 @@ $permis = $row['permis'];
     <script src="https://use.fontawesome.com/releases/v6.1.0/js/all.js" crossorigin="anonymous"></script>
     <!-- Google fonts-->
     <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet" type="text/css" />
-    <link href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic" rel="stylesheet"
-        type="text/css" />
+    <link href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic" rel="stylesheet" type="text/css" />
     <!-- Core theme CSS (includes Bootstrap)-->
     <link href="../css/styles.css" rel="stylesheet" />
 </head>
@@ -39,9 +38,9 @@ $permis = $row['permis'];
             <!-- Portfolio Section Heading-->
             <div text-align="left">
                 <a href="../index.php"><img class="img-fluid" src="../assets/img/portfolio/home.png" width="100" /></a>
-                <h2 class="page-section-heading text-center text-uppercase text-secondary mb-0">Report 1</h2>
+                <h2 class="page-section-heading text-center text-uppercase text-secondary mb-0">Income and Expense</h2>
             </div>
-            
+
             <!-- Icon Divider-->
             <div class="divider-custom">
 
@@ -51,19 +50,18 @@ $permis = $row['permis'];
             </div>
 
             <div style="text-align:right">
-                <form action="report1.php" method="post">
-                    <input type="text" name="search" placeholder="year (example 2023)">
+                <form action="./rpt_income_expense.php" method="post">
+                    <input type="number" name="search" placeholder="year (example 2023)">
                     <input type="submit" name="submit" value="Search">
                 </form>
 
             </div>
-            
+
         </div>
     </section>
-    
+
     <div style="text-align: center;">
         <table class="table table-hover">
-        <h1>Income and Expenses Account</h1>
             <tr>
                 <th>DATE</th>
                 <th>INCOME</th>
@@ -71,29 +69,57 @@ $permis = $row['permis'];
                 <th>DETAIL</th>
             </tr>
             <?php
-            
+
             $month = array('01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12');
 
             foreach ($month as $m) {
                 $i = $m;
                 if (isset($_POST['submit'])) {
-                    if($_POST['search']==''){
-                        $search='Y';
-                    }else{
-                        $search = $_POST['search'];
+                    $search = $_POST['search'];
+                    if ($_POST['search'] == '') {
+                        $result = selectWhere(
+                            "date_format(top_date,'%Y-%m')as date,sum(top_amount) as amount",
+                            'topup',
+                            "DATE_FORMAT(top_date, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-$i')
+                            group by  DATE_FORMAT(top_date, '%Y-%m')"
+                        );
+                        $expense = selectWhere(
+                            "sum(inc_amount) as amount",
+                            "income",
+                            "DATE_FORMAT(inc_month, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-$i')
+                            group by  DATE_FORMAT(inc_month, '%Y-%m')"
+                        );
+                    } else {
+                        $result = selectWhere(
+                            "date_format(top_date,'%Y-%m')as date,sum(top_amount) as amount",
+                            'topup',
+                            "DATE_FORMAT(top_date, '%Y-%m') = DATE_FORMAT(CURDATE(), '$search-$i')
+                            group by  DATE_FORMAT(top_date, '%Y-%m')"
+                        );
+                        $expense = selectWhere(
+                            "sum(inc_amount) as amount",
+                            "income",
+                            "DATE_FORMAT(inc_month, '%Y-%m') = DATE_FORMAT(CURDATE(), '$search-$i')
+                            group by  DATE_FORMAT(inc_month, '%Y-%m')"
+                        );
                     }
-                   // echo $search;
-                    $result = selectWhere("top_id,DATE_FORMAT(CURDATE(), '%$search-$i') as date,sum(top_amount) as amount", 'topup', "top_date like DATE_FORMAT(top_date, '%$search-$i%') group by  DATE_FORMAT(CURDATE(), '%$search-$i%')");
-
-                }else{
-                    $result = selectWhere("select top_id,DATE_FORMAT(CURDATE(), '%Y-04') as date,sum(top_amount) as amount from topup where top_date like DATE_FORMAT(top_date, '%Y-04%') group by  DATE_FORMAT(CURDATE(), '%Y-04%')");
-                    
+                } else {
+                    $result = selectWhere(
+                        "date_format(top_date,'%Y-%m')as date,sum(top_amount) as amount",
+                        'topup',
+                        "DATE_FORMAT(top_date, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-$i')
+                            group by  DATE_FORMAT(top_date, '%Y-%m')"
+                    );
+                    $expense = selectWhere(
+                        "sum(inc_amount) as amount",
+                        "income",
+                        "DATE_FORMAT(inc_month, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-$i')
+                        group by  DATE_FORMAT(inc_month, '%Y-%m')"
+                    );
                 }
-                
                 while ($row = mysqli_fetch_array($result)) {
-                    $expense = selectWhere('sum(inc_amount) as amount','income',"inc_date like DATE_FORMAT(inc_date, '%Y-$i%')")->fetch_array();
-                    
-                    ?>
+                    $exp = $expense->fetch_assoc();
+            ?>
                     <tr>
                         <td>
                             <?= $row['date'] ?>
@@ -102,25 +128,15 @@ $permis = $row['permis'];
                             <?= $row['amount'] ?>
                         </td>
                         <td>
-                            <?= number_format($expense['amount'], 2) ?>
+                            <?= number_format($exp['amount'], 2) ?>
                         </td>
-
                         <td>
-                            <?php if ($permis) { ?>
-
-                                <a href="re1_income.php?date=<?= $row["date"] ?>" class="btn btn-primary">Income</a>
-                                <a href="re1_expense.php?date=<?= $row["date"] ?>" class="btn btn-danger">Expense</a>
-                                <?php $i++;
-                            } ?>
-
+                            <a href="rpt_income.php?date=<?= $row['date'] ?>" class="btn btn-primary">Income</a>
+                            <a href="rpt_expense.php?date=<?= $row['date'] ?>" class="btn btn-warning">Expense</a>
                         </td>
-
-
-
-
 
                     </tr>
-                <?php }
+            <?php }
             }
             mysqli_close(conn());
             ?>

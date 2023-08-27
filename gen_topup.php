@@ -15,6 +15,11 @@ for ($i; $i <= $r; $i++) {
     $randomIndex = array_rand($numbers);
     $coin = $numbers[$randomIndex];
 
+    $startTimestamp = strtotime('2022-01-01');
+    $endTimestamp = strtotime("2023-08-30");
+    $randomTimestamp = rand($startTimestamp, $endTimestamp);
+    $randomDate = date('Y-m-d', $randomTimestamp);
+
     $sqlcoin = select_where("cus_coin", "customer", "cus_id = '$cus_id'");
     if ($sqlcoin->num_rows > 0) {
         $row1 = $sqlcoin->fetch_assoc();
@@ -26,7 +31,7 @@ for ($i; $i <= $r; $i++) {
         } else {
             $last_topid = autoid("TOP-", "top_id", "topup", "0000001");
             $sqlins_topup = "insert into topup (top_id,top_cusid,top_amount,top_date)
-            values ('$last_topid','$cus_id','$coin',NOW())";
+            values ('$last_topid','$cus_id','$coin','$randomDate')";
             $result2 = connectdb()->query($sqlins_topup);
 
             if (!$result2) {
